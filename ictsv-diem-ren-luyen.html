@@ -1,0 +1,633 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chấm điểm rèn luyện — mô phỏng iCTSV</title>
+<style>
+  :root{
+    --do:#A0161C;          /* đỏ Bách khoa */
+    --do-sang:#C4262E;
+    --cam:#E07B00;         /* điểm SV tự chấm */
+    --luc:#1A8A44;         /* điểm GV chấm */
+    --olive:#7A6B2E;       /* tiêu đề nhóm */
+    --nen:#EDEEF0;
+    --giay:#FFFFFF;
+    --muc:#1B1D21;
+    --mo:#8A8F96;
+    --vien:#E2E4E8;
+    --hong:#FBF1F2;
+    --am:#F5F4F1;
+    --r:14px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(1100px 600px at 80% -10%, #ffffff 0%, #E7E9EC 60%, #DDE0E4 100%);
+    color:var(--muc);
+    font-family:"Segoe UI Variable Text","Segoe UI",Roboto,-apple-system,"Helvetica Neue",Arial,sans-serif;
+    font-size:15px; line-height:1.45;
+    min-height:100vh;
+  }
+  button{font:inherit;color:inherit}
+
+  .stage{
+    display:grid; grid-template-columns:430px minmax(300px,420px);
+    gap:34px; justify-content:center; align-items:start;
+    padding:34px 20px 60px;
+  }
+  @media (max-width:980px){
+    .stage{grid-template-columns:minmax(0,460px); gap:0; padding:0}
+    .aside{display:none}
+  }
+
+  /* ---------- khung điện thoại ---------- */
+  .phone{
+    background:var(--nen); border-radius:26px; overflow:hidden;
+    box-shadow:0 24px 60px -20px rgba(20,24,30,.45), 0 2px 0 rgba(255,255,255,.6) inset;
+    display:flex; flex-direction:column; height:min(860px,92vh);
+  }
+  @media (max-width:980px){ .phone{border-radius:0; height:100vh; box-shadow:none} }
+
+  .statusbar{
+    background:var(--do); color:#fff; display:flex; justify-content:space-between;
+    align-items:center; padding:7px 16px 2px; font-size:12.5px; letter-spacing:.2px;
+  }
+  .statusbar span{opacity:.9}
+
+  .appbar{
+    background:var(--do); color:#fff; display:flex; align-items:center; gap:12px;
+    padding:6px 12px 14px;
+  }
+  .appbar h1{font-size:17px; font-weight:600; margin:0; flex:1; text-align:center; letter-spacing:.2px}
+  .iconbtn{
+    background:transparent; border:0; width:38px; height:38px; border-radius:10px;
+    display:grid; place-items:center; cursor:pointer; color:#fff;
+  }
+  .iconbtn:hover{background:rgba(255,255,255,.14)}
+  .iconbtn:focus-visible{outline:2px solid #fff; outline-offset:1px}
+
+  .kybar{
+    background:var(--giay); display:flex; align-items:center; gap:10px;
+    padding:12px 14px; border-bottom:1px solid var(--vien);
+  }
+  .chip-ky{
+    background:var(--hong); color:var(--do); font-weight:600; font-size:13.5px;
+    padding:6px 12px; border-radius:8px; border:1px solid #F0DCDE;
+  }
+  .kybar .tong{flex:1; display:flex; justify-content:space-around; font-size:14.5px}
+  .tong b{font-weight:600}
+  .sv{color:var(--cam)} .gv{color:var(--luc)}
+
+  .carousel{
+    background:var(--giay); display:grid; grid-template-columns:44px 1fr 44px;
+    align-items:center; padding:14px 6px 16px; border-bottom:1px solid var(--vien);
+  }
+  .nav{background:none;border:0;cursor:pointer;color:#3B3F45;font-size:26px;line-height:1;padding:8px;border-radius:10px}
+  .nav:hover{background:#F1F2F4}
+  .nav:disabled{opacity:.25;cursor:default;background:none}
+  .carousel h2{
+    margin:0 0 6px; font-size:15.5px; font-weight:600; color:var(--luc);
+    text-align:center; text-wrap:balance; line-height:1.35;
+  }
+  .carousel .diem{display:flex; justify-content:space-around; font-size:14px; font-weight:600}
+
+  .scroller{flex:1; overflow-y:auto; overscroll-behavior:contain; scroll-behavior:smooth}
+  .scroller::-webkit-scrollbar{width:8px}
+  .scroller::-webkit-scrollbar-thumb{background:#C9CDD3;border-radius:8px}
+
+  .nhom{padding:12px 14px 8px; background:var(--am)}
+  .nhom:nth-of-type(even){background:var(--hong)}
+  .nhom h3{margin:0 0 4px; font-size:15px; font-weight:600; color:var(--olive)}
+  .nhom .meta{display:flex; justify-content:space-between; font-size:13.5px; color:var(--mo)}
+  .nhom .meta .sv,.nhom .meta .gv{font-weight:600}
+
+  .items{padding:10px 12px 4px; background:var(--nen); display:grid; gap:12px}
+  .item{
+    background:var(--giay); border:1px solid var(--vien); border-left:6px solid #C2C6CC;
+    border-radius:10px; padding:12px 14px; box-shadow:0 1px 2px rgba(16,20,26,.05);
+  }
+  .item.co-diem{border-left-color:var(--cam)}
+  .item.tru.co-diem{border-left-color:var(--do)}
+  .item p{margin:0 0 8px; font-size:15px; line-height:1.4}
+  .item .toida{font-size:13.5px; color:var(--mo)}
+  .row{display:flex; align-items:center; gap:10px; margin-top:8px; flex-wrap:wrap}
+  .row .gvcell{font-size:13.5px; color:var(--mo); margin-left:auto}
+
+  .chon{display:flex; align-items:center; gap:10px; margin-top:9px; flex-wrap:wrap}
+  .tick{display:inline-flex; align-items:center; gap:9px; cursor:pointer; user-select:none;
+        font-size:14.5px; color:#3B4048}
+  .tick input{position:absolute; opacity:0; width:0; height:0}
+  .box{width:22px;height:22px;border:1.6px solid #BFC4CB;border-radius:6px;display:grid;place-items:center;
+       background:#fff;transition:background .15s,border-color .15s;flex:none}
+  .box svg{opacity:0;transition:opacity .12s}
+  .tick input:checked + .box{background:var(--cam);border-color:var(--cam)}
+  .tru .tick input:checked + .box{background:var(--do);border-color:var(--do)}
+  .tick input:checked + .box svg{opacity:1}
+  .tick input:focus-visible + .box{outline:2px solid var(--muc);outline-offset:2px}
+  .chon .gvcell{margin-left:auto; font-size:13.5px; color:var(--mo)}
+  .diemdat{font-weight:600;color:var(--cam);font-variant-numeric:tabular-nums;font-size:16px}
+  .tru .diemdat{color:var(--do)}
+  .canhbao{margin-top:7px;font-size:13px;color:#8A5A2E}
+
+  .mcbox{
+    margin-top:10px; border:1px solid #DCEBDF; background:#F4F9F5; border-radius:9px;
+    padding:9px 11px; font-size:14px; line-height:1.45;
+  }
+  .mcbox .nhan{font-size:12.5px; color:var(--luc); font-weight:600; margin-bottom:3px}
+  .mcbox .hd{display:flex; gap:14px; margin-top:8px}
+  .mcbox .hd button{background:none;border:0;padding:0;color:#1668C6;font-size:13.5px;cursor:pointer}
+  .mcbox .hd button:hover{text-decoration:underline}
+
+  .mc{
+    background:none;border:0;padding:0;margin-top:9px; color:#1668C6; font-size:14.5px;
+    cursor:pointer; text-align:left;
+  }
+  .mc:hover{text-decoration:underline}
+  .mc.co{color:var(--luc)}
+
+  .footerbar{
+    background:var(--giay); border-top:1px solid var(--vien); padding:11px 14px 14px;
+    display:flex; align-items:center; gap:12px;
+  }
+  .footerbar .num{font-size:24px; font-weight:600; line-height:1}
+  .footerbar .lbl{font-size:12.5px; color:var(--mo)}
+  .xeploai{
+    margin-left:auto; padding:6px 12px; border-radius:999px; font-size:13.5px; font-weight:600;
+    background:#EEF3EE; color:#1A8A44; border:1px solid #D6E5DA;
+  }
+  .luutt{
+    display:flex; align-items:center; gap:7px; font-size:12.5px; color:var(--mo);
+    max-width:150px; line-height:1.3; text-align:left;
+  }
+  .luutt i{width:7px;height:7px;border-radius:50%;background:var(--luc);flex:none;transition:background .2s}
+  .luutt.dang i{background:var(--cam)}
+  .luutt.loi i{background:var(--do)}
+  .luutt.loi span{color:var(--do)}
+  /* ---------- bảng tổng quan ---------- */
+  .aside{position:sticky; top:34px}
+  .panel{background:var(--giay); border:1px solid var(--vien); border-radius:18px; padding:20px 20px 16px;
+         box-shadow:0 14px 40px -26px rgba(20,24,30,.6)}
+  .panel h2{margin:0 0 2px; font-size:18px; font-weight:600}
+  .panel .sub{margin:0 0 18px; color:var(--mo); font-size:13.5px}
+  .kpi{display:flex; align-items:flex-end; gap:14px; margin-bottom:16px}
+  .kpi .big{font-size:52px; font-weight:600; line-height:.9; letter-spacing:-1px}
+  .kpi .of{color:var(--mo); font-size:15px; padding-bottom:6px}
+  .bar{height:9px; background:#EDEEF0; border-radius:99px; overflow:hidden; margin-bottom:18px}
+  .bar i{display:block; height:100%; background:linear-gradient(90deg,var(--cam),var(--do)); border-radius:99px; transition:width .25s ease}
+  table{width:100%; border-collapse:collapse; font-size:14px}
+  td{padding:7px 0; border-bottom:1px solid #F0F1F3; vertical-align:top}
+  td.n{text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; font-weight:600}
+  tr:last-child td{border-bottom:0}
+  td.t{padding-right:12px; line-height:1.35}
+  .mini{height:6px; background:#EDEEF0; border-radius:99px; margin-top:5px; overflow:hidden}
+  .mini i{display:block;height:100%;background:var(--cam);border-radius:99px}
+  .mini.tru i{background:var(--do)}
+  .thang{margin-top:16px; font-size:13px; color:var(--mo); line-height:1.6}
+  .actions{display:flex; gap:8px; margin-top:16px; flex-wrap:wrap}
+  .ghost{border:1px solid var(--vien); background:#fff; border-radius:9px; height:36px; padding:0 13px; font-size:14px; cursor:pointer}
+  .ghost:hover{background:#F5F6F7}
+
+  /* ---------- overlay / dialog ---------- */
+  dialog{
+    border:0; border-radius:16px; padding:0; max-width:min(420px,92vw); width:100%;
+    box-shadow:0 30px 70px -20px rgba(0,0,0,.5);
+  }
+  dialog::backdrop{background:rgba(16,20,26,.5)}
+  .dlg{padding:20px}
+  .dlg h3{margin:0 0 4px; font-size:17px}
+  .dlg p.q{margin:0 0 14px; color:var(--mo); font-size:13.5px}
+  .dlg textarea{width:100%; min-height:92px; border:1px solid var(--vien); border-radius:10px; padding:10px; font:inherit; resize:vertical}
+  .dlg textarea:focus{outline:2px solid var(--do); outline-offset:-1px}
+  .dlg .hang{display:flex; gap:8px; justify-content:flex-end; margin-top:14px}
+  .dlg .primary{border:0;background:var(--do);color:#fff;border-radius:9px;height:36px;padding:0 14px;cursor:pointer}
+
+  .toast{
+    position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(10px);
+    background:#22262C; color:#fff; padding:10px 16px; border-radius:10px; font-size:14px;
+    opacity:0; pointer-events:none; transition:opacity .2s, transform .2s; z-index:99;
+    max-width:88vw; text-align:center;
+  }
+  .toast.hien{opacity:1; transform:translateX(-50%) translateY(0)}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important; scroll-behavior:auto!important}}
+</style>
+
+<div class="stage">
+  <div class="phone">
+    <div class="statusbar"><span id="dongho">10:10</span><span>iCTSV · mô phỏng</span></div>
+
+    <div class="appbar">
+      <button class="iconbtn" id="btn-back" title="Kỳ trước đó" aria-label="Quay lại">←</button>
+      <h1>Điểm rèn luyện</h1>
+      <button class="iconbtn" id="btn-tong" title="Xem bảng tổng kết" aria-label="Bảng tổng kết">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M7 9h4M9 7v4M14 9h3M14 14.5h3M7 14h4"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="kybar">
+      <span class="chip-ky">Kì 2026-1</span>
+      <div class="tong">
+        <span>SV chấm: <b class="sv" id="tong-sv">0</b></span>
+        <span>GV chấm: <b class="gv" id="tong-gv">0</b></span>
+      </div>
+    </div>
+
+    <div class="carousel">
+      <button class="nav" id="prev" aria-label="Mục trước">‹</button>
+      <div>
+        <h2 id="muc-ten"></h2>
+        <div class="diem">
+          <span class="sv" id="muc-sv"></span>
+          <span class="gv" id="muc-gv"></span>
+        </div>
+      </div>
+      <button class="nav" id="next" aria-label="Mục sau">›</button>
+    </div>
+
+    <div class="scroller" id="noidung"></div>
+
+    <div class="footerbar">
+      <div>
+        <div class="num sv" id="ft-diem">0</div>
+        <div class="lbl">điểm rèn luyện tạm tính</div>
+      </div>
+      <span class="xeploai" id="ft-loai">Kém</span>
+      <div class="luutt" id="luu-tt"><i></i><span>Bản chấm được lưu tự động</span></div>
+    </div>
+  </div>
+
+  <aside class="aside"><div class="panel" id="panel"></div></aside>
+</div>
+
+<dialog id="dlg-mc"><form method="dialog" class="dlg">
+  <h3>Minh chứng hoạt động</h3>
+  <p class="q" id="mc-tieuchi"></p>
+  <textarea id="mc-text" placeholder="Ví dụ: Ảnh chụp giấy chứng nhận Hiến máu 12/03/2026, mã hoạt động HD-2026-114"></textarea>
+  <div class="hang">
+    <button class="ghost" value="xoa" type="submit">Gỡ minh chứng</button>
+    <button class="primary" value="luu" type="submit">Lưu minh chứng</button>
+  </div>
+</form></dialog>
+
+<dialog id="dlg-tong"><div class="dlg" id="panel-mobile"></div>
+  <div class="dlg" style="padding-top:0"><div class="hang"><button class="primary" onclick="document.getElementById('dlg-tong').close()">Đóng</button></div></div>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* ====================== DỮ LIỆU TIÊU CHÍ (Kì 2026-1) ====================== */
+const DATA = [
+ {ten:"Chấp hành pháp luật và nội quy, quy chế của nhà trường", max:25, nhom:[
+   {ten:"Chấp hành các quy định của pháp luật đối với công dân", max:15, items:[
+     ["Hiểu biết và chấp hành pháp luật của Nhà nước, quy định của nhà trường và nơi cư trú",6],
+     ["Tham gia Sinh hoạt công dân do nhà trường tổ chức",6],
+     ["Khai báo thông tin liên lạc và nơi cư trú theo yêu cầu của Đại học",4]]},
+   {ten:"Chấp hành nội quy, quy chế và các quy định của nhà trường", max:15, items:[
+     ["Tham gia Họp lớp thường kỳ do Trường/Khoa tổ chức",6],
+     ["Nắm vững quy định và quy chế của nhà trường",6],
+     ["Hoàn thành mục tiêu cam kết học tập và rèn luyện (Kết quả GPA và điểm rèn luyện cuối kỳ đạt từ mức đăng ký đầu kỳ trở lên)",6]]}
+ ]},
+ {ten:"Trách nhiệm, tinh thần và thái độ trong học tập", max:20, nhom:[
+   {ten:"Trách nhiệm và thái độ tham gia các hoạt động học tập", max:15, items:[
+     ["Có kế hoạch học tập và rèn luyện phù hợp được thầy cô ghi nhận",3],
+     ["Tham gia hoạt động, sự kiện liên quan đến NCKH, học thuật, chuyên môn",3],
+     ["Tham gia các buổi tư vấn xây dựng kế hoạch, động lực học tập phù hợp",3],
+     ["Tham gia hoạt động hướng nghiệp, tìm kiếm thông tin việc làm",3],
+     ["Tham gia khóa đào tạo kỹ năng nghề nghiệp, kỹ năng bổ trợ chuyên môn",6],
+     ["Chủ động xây dựng, hoàn thiện và cập nhật Portfolio cá nhân theo từng học kỳ",3]]},
+   {ten:"Trách nhiệm và tinh thần tham gia các kỳ thi, cuộc thi", max:12, items:[
+     ["Tham gia công bố khoa học tại Hội nghị hoặc tạp chí khoa học chuyên ngành",6],
+     ["Tham gia các cuộc thi Olympic cấp Đại học, cấp quốc gia, quốc tế",6],
+     ["Thành viên CLB học thuật, Lab nghiên cứu, nhóm nghiên cứu, nhóm khởi nghiệp",6]]},
+   {ten:"Tinh thần vượt khó, phấn đấu vươn lên trong học tập", max:8, items:[
+     ["Có nỗ lực trong học tập (GPA kỳ đánh giá cao hơn kỳ trước, giảm mức cảnh báo học tập, hoặc duy trì điểm GPA trên 3.2)",6],
+     ["Tham gia các hoạt động tăng cường kỹ năng sử dụng ngoại ngữ được nhà trường ghi nhận",6],
+     ["Có chứng chỉ ngoại ngữ quốc tế hoặc tương đương đạt mức TOEIC 600 điểm trở lên (còn hạn)",6],
+     ["Được doanh nghiệp tuyển dụng là thực tập sinh và có thời gian thực tập hơn 30 ngày",6]]}
+ ]},
+ {ten:"Trách nhiệm tham gia hoạt động chính trị - xã hội, văn hoá, văn nghệ, thể thao, phòng chống tội phạm, tệ nạn xã hội", max:20, nhom:[
+   {ten:"Trách nhiệm và hiệu quả tham gia các hoạt động rèn luyện", max:15, items:[
+     ["Tham gia sự kiện chính trị - xã hội (các Đại hội, Hội nghị, cuộc họp của tổ chức Đảng, Đoàn - Hội từ cấp Chi bộ, Chi đoàn, Chi hội trở lên... và các chương trình mang tính chính trị - xã hội khác).",3],
+     ["Tham gia cổ vũ các hoạt động phong trào văn hóa, thể thao",3],
+     ["Tham gia các hoạt động thể dục nâng cao sức khỏe được tổ chức bởi các đơn vị hợp pháp",4],
+     ["Tham gia các cuộc thi văn hóa, văn nghệ do các tổ chức, đơn vị hợp pháp tổ chức (hát, múa, nhảy, nhạc cụ, hội họa...).",6],
+     ["Tham gia các giải thể thao do các tổ chức, đơn vị hợp pháp tổ chức (các môn thể thao chính thức như: chạy, bóng đá, cờ vua, bóng chuyền...).",6],
+     ["Tham gia các khóa đào tạo kỹ năng mềm do các đơn vị được Nhà trường công nhận tổ chức.",6],
+     ["Thành viên CLB/Tổ/Đội/Nhóm SV hợp pháp, hoạt động về văn nghệ, thể thao, tình nguyện, sở thích",6]]},
+   {ten:"Tham gia các hoạt động công ích, tình nguyện, công tác xã hội", max:12, items:[
+     ["Tham gia hoạt động khảo sát thông tin do nhà trường thực hiện",3],
+     ["Tham gia các hoạt động tình nguyện (hỗ trợ địa phương, bảo đảm an toàn giao thông khu vực cổng trường, hỗ trợ tổ chức các chương trình và sự kiện của Đại học/Trường/Khoa).",3],
+     ["Tham gia phong trào \"cốc trà đá vì cộng đồng\", \"tuổi trẻ Bách khoa Nhân ái\"",3],
+     ["Tham gia hiến máu nhân đạo do Đại học và các tổ chức hợp pháp phát động, tổ chức",6],
+     ["Tham gia các hoạt động phổ biến, tìm hiểu bản sắc văn hóa dân tộc, văn hóa địa phương, văn hóa trường học",3],
+     ["Tham gia các đội hình hoặc chiến dịch tình nguyện trong và ngoài Nhà trường (Mùa hè xanh, Tình nguyện mùa đông, Tiếp sức mùa thi, Tư vấn viên đồng đẳng...)",6]]},
+   {ten:"Tham gia tuyên truyền, phòng chống tội phạm và tệ nạn xã hội", max:6, items:[
+     ["Tham gia bảo vệ cảnh quan, môi trường, nếp sống văn minh nơi công cộng.",4],
+     ["Tham gia các hoạt động đảm bảo an ninh, trật tự và an toàn trường học.",4],
+     ["Tham gia các diễn đàn sinh viên, các buổi toạ đàm xây dựng quy định, quy chế và pháp luật",4]]}
+ ]},
+ {ten:"Điểm ý thức công dân trong quan hệ cộng đồng", max:15, nhom:[
+   {ten:"Tham gia tuyên truyền các chủ trương của Đảng, chính sách pháp luật của Nhà nước", max:12, items:[
+     ["Có hành động tích cực trên không gian mạng, phù hợp với chủ trương của Nhà trường và đường lối, chính sách của Nhà nước.",3],
+     ["Tham gia tuyên truyền đường lối của Đảng, pháp luật của Nhà nước, quy định của nơi cư trú hoặc quy chế của Nhà trường được các cấp có thẩm quyền xác nhận.",3],
+     ["Tham gia các hoạt động phổ biến chủ chương của Đảng, chính sách, pháp luật của Nhà nước",4],
+     ["Tham gia các cuộc thi tìm hiểu lịch sử, văn hóa, truyền thống dân tộc",4],
+     ["Góp phần xây dựng tốt hình ảnh sinh viên Bách khoa với các cơ quan, tổ chức hay doanh nghiệp được nhà trường ghi nhận",4]]},
+   {ten:"Trách nhiệm tham gia các hoạt động xã hội được ghi nhận", max:12, items:[
+     ["Được giấy khen, bằng khen của tổ chức Đoàn, Hội, nhà trường hoặc chính quyền địa phương",6],
+     ["Đạt loại Khá trở lên khi tham gia học \"Lớp bồi dưỡng nhận thức về Đảng\".",6],
+     ["Được kết nạp Đảng hoặc được chuyển Đảng chính thức.",6],
+     ["Được cơ quan, công ty hoặc tổ chức hợp pháp nơi thực tập đánh giá hoàn thành tốt nhiệm vụ trở lên",6]]}
+ ]},
+ {ten:"Trách nhiệm và kết quả tham gia công tác cán bộ lớp, công tác đoàn thể, các tổ chức khác của nhà trường hoặc có thành tích xuất sắc trong học tập và rèn luyện được cơ quan có thẩm quyền khen thưởng", max:20, nhom:[
+   {ten:"Tham gia công tác cán bộ tại Lớp, tổ chức Đoàn - Hội, Tổ/Đội/CLB", max:10, items:[
+     ["Cán bộ Lớp, Chi bộ, Đoàn - Hội, Tổ/Đội/CLB, trưởng nhóm SV NCKH hoàn thành xuất sắc nhiệm vụ trong kỳ.",6],
+     ["Cán bộ Lớp, Chi bộ, Đoàn - Hội, Tổ/Đội/CLB, trưởng nhóm SV NCKH hoàn thành tốt nhiệm vụ trong kỳ.",4],
+     ["Cán bộ Lớp, Chi bộ, Đoàn - Hội, Tổ/Đội/CLB, trưởng nhóm SV NCKH hoàn thành nhiệm vụ trong kỳ.",3]]},
+   {ten:"Hỗ trợ và tham gia tích cực vào các hoạt động chung của đơn vị", max:10, items:[
+     ["Thành viên tích cực thuộc các Tổ/Đội/CLB, nhóm SV NCKH tham gia hỗ trợ triển khai hoạt động của Lớp, Khoa, Trường hoặc Đại học.",6],
+     ["Tham gia hỗ trợ triển khai hoạt động của Lớp, Khoa, Trường hoặc Đại học và hoàn thành tốt nhiệm vụ được giao.",4],
+     ["Tham gia hỗ trợ triển khai hoạt động của Lớp, Khoa, Trường hoặc Đại học và hoàn thành nhiệm vụ được giao.",3]]},
+   {ten:"Có các thành tích trong NCKH, cuộc thi KHKT, khởi nghiệp", max:15, items:[
+     ["Đạt giải trong các cuộc thi chính thức cấp Quốc gia, cấp Quốc tế.",15],
+     ["Đạt giải trong các cuộc thi chính thức cấp Thành phố",12],
+     ["Đạt giải trong các cuộc thi chính thức cấp Đại học",10],
+     ["Được khen thưởng bằng khen, huy chương tương đương cấp Bộ trở lên",10],
+     ["Đạt thành tích trong NCKH sinh viên, cuộc thi khoa học kỹ thuật, sáng kiến cải tiến kỹ thuật khởi nghiệp do đơn vị Đại học/Trường/Khoa tổ chức",8],
+     ["Đạt danh hiệu \"Sinh viên 5 tốt\" từ cấp Đại học trở lên",8],
+     ["Có kết quả học tập và rèn luyện kỳ trước đó đạt mức xuất sắc (GPA ≥ 3.6, RL ≥ 90) trở lên.",6],
+     ["Có kết quả học tập và rèn luyện kỳ trước đó đạt mức Giỏi (GPA ≥ 3.2, RL ≥ 80) trở lên.",4]]}
+ ]},
+ {ten:"Sinh viên bị trừ điểm nếu vi phạm các quy định sau đây", max:-110, nhom:[
+   {ten:"Vi phạm trong học tập", max:-30, items:[
+     ["Vi phạm quy chế thi từ cảnh cáo trở lên",-10],
+     ["Bị kỷ luật khi thi hộ",-20]]},
+   {ten:"Vi phạm trong rèn luyện", max:-30, items:[
+     ["Vi phạm Quy tắc ứng xử văn hóa",-10],
+     ["Vi phạm các quy định của Nhà trường và pháp luật hiện hành, đã bị cơ quan có thẩm quyền lập biên bản hoặc ra quyết định xử lý kỷ luật.",-20]]},
+   {ten:"Vi phạm pháp luật", max:-50, items:[
+     ["Vi phạm pháp luật thuộc nhóm tội danh hình sự",-50]]}
+ ]}
+];
+
+/* gán id ổn định cho từng tiêu chí */
+DATA.forEach((s,i)=>{ s.id="s"+i; s.tru = s.max<0;
+  s.nhom.forEach((g,j)=>{ g.id=s.id+"g"+j;
+    g.items = g.items.map(([t,p],k)=>({id:g.id+"i"+k, ten:t, max:p}));
+  });
+});
+
+/* ====================== TRẠNG THÁI ====================== */
+let mucHienTai = 0;
+const diem = {};       // id -> điểm SV tự chấm
+const minhChung = {};  // id -> mô tả minh chứng
+let oDangSua = null;
+
+const KEY = "ictsv-drl-2026-1";
+let dangTai = true;                 // chặn tự lưu trước khi đọc xong bản cũ
+
+function bao(trangthai, chu){
+  const el = document.getElementById("luu-tt"); if(!el) return;
+  el.className = "luutt" + (trangthai?" "+trangthai:"");
+  el.querySelector("span").textContent = chu;
+}
+const gioPhut = () => { const d=new Date();
+  return d.getHours()+":"+String(d.getMinutes()).padStart(2,"0")+":"+String(d.getSeconds()).padStart(2,"0"); };
+
+const luuTuDong = (()=>{ let hen;
+  return ()=>{
+    if(dangTai) return;
+    bao("dang","Đang lưu…");
+    clearTimeout(hen);
+    hen = setTimeout(async ()=>{
+      try{
+        await window.storage.set(KEY, JSON.stringify({diem, mc:minhChung, luc:Date.now()}));
+        bao("", "Đã lưu lúc "+gioPhut());
+      }catch(e){
+        bao("loi", "Không lưu được — bản chấm chỉ giữ trong phiên này");
+      }
+    }, 400);
+  };
+})();
+
+async function taiTrangThai(){
+  try{
+    const r = await window.storage.get(KEY);
+    if(r && r.value){
+      const d = JSON.parse(r.value);
+      Object.assign(diem, d.diem||{}); Object.assign(minhChung, d.mc||{});
+      ve();
+      bao("", "Mở lại bản chấm lưu lúc " + new Date(d.luc||Date.now())
+              .toLocaleString("vi-VN",{hour:"2-digit",minute:"2-digit",day:"2-digit",month:"2-digit"}));
+    } else bao("", "Bản chấm được lưu tự động");
+  }catch(e){
+    bao("", "Bản chấm được lưu tự động");
+  }finally{ dangTai = false; }
+}
+
+/* ====================== TÍNH ĐIỂM ====================== */
+const g = id => diem[id]||0;
+const tongNhom = n => n.items.reduce((a,i)=>a+g(i.id),0);
+const tongMuc  = s => s.nhom.reduce((a,n)=>a+tongNhom(n),0);
+const tongTatCa = () => DATA.reduce((a,s)=>a+tongMuc(s),0);
+const tongCong = () => Math.max(0, Math.min(100, tongTatCa()));
+
+function xepLoai(d){
+  if(d>=90) return ["Xuất sắc","#1A8A44","#EEF5F0","#D6E5DA"];
+  if(d>=80) return ["Tốt","#1668C6","#EEF3FA","#D5E3F3"];
+  if(d>=65) return ["Khá","#8A6A00","#FAF4E4","#EFE3BF"];
+  if(d>=50) return ["Trung bình","#8A5A2E","#FAF1E9","#EEDCCB"];
+  if(d>=35) return ["Yếu","#B0521A","#FBEFE7","#F0D9C7"];
+  return ["Kém","#A0161C","#FBF1F2","#F0DCDE"];
+}
+
+/* đặt điểm, tự cắt theo trần tiêu chí → trần nhóm → trần mục */
+function datDiem(muc, nhom, item, v){
+  const dau = item.max<0 ? -1 : 1;
+  let m = Math.min(Math.abs(v), Math.abs(item.max));           // trần tiêu chí
+  const khacNhom = tongNhom(nhom)-g(item.id);
+  let tranNhom = Math.abs(nhom.max)-Math.abs(khacNhom);
+  const khacMuc = tongMuc(muc)-g(item.id);
+  let tranMuc = Math.abs(muc.max)-Math.abs(khacMuc);
+  let canh = "";
+  if(m > tranNhom){ m = Math.max(0,tranNhom); canh = "Nhóm đã chạm trần "+Math.abs(nhom.max)+" điểm"; }
+  if(m > tranMuc){ m = Math.max(0,tranMuc); canh = "Mục đã chạm trần "+Math.abs(muc.max)+" điểm"; }
+  diem[item.id] = dau*m;
+  if(canh) nhac(canh);
+  ve();
+}
+
+/* ====================== VẼ GIAO DIỆN ====================== */
+const $ = s => document.querySelector(s);
+const esc = t => t.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function veMuc(){
+  const s = DATA[mucHienTai];
+  $("#muc-ten").textContent = s.ten;
+  $("#muc-sv").textContent = "SV: "+tongMuc(s)+"/"+s.max;
+  $("#muc-gv").textContent = "GV: 0/"+s.max;
+  $("#prev").disabled = mucHienTai===0;
+  $("#next").disabled = mucHienTai===DATA.length-1;
+
+  const html = s.nhom.map(n=>`
+    <section class="nhom">
+      <h3>Nhóm ${esc(n.ten)}</h3>
+      <div class="meta"><span class="sv">SV chấm: ${tongNhom(n)}</span><span class="gv">GV: 0</span><span>Tối đa: ${n.max}</span></div>
+    </section>
+    <div class="items">
+      ${n.items.map(it=>{
+        const v = g(it.id), mc = minhChung[it.id];
+        const thieu = v!==0 && Math.abs(v)<Math.abs(it.max);
+        return `<article class="item ${s.tru?"tru":""} ${v?"co-diem":""}">
+          <p>${esc(it.ten)}</p>
+          <div class="toida">Điểm tối đa: ${it.max}</div>
+          <div class="chon">
+            <label class="tick">
+              <input type="checkbox" data-tick="${it.id}" ${v?"checked":""}>
+              <span class="box"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff"
+                stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span>
+              <span>${s.tru?"Có vi phạm trong kỳ":`Đã tham gia — tính đủ ${it.max} điểm`}</span>
+            </label>
+            <span class="gvcell">GV chấm: 0</span>
+            <span class="diemdat">${v>0?"+":""}${v}</span>
+          </div>
+          ${thieu?`<div class="canhbao">Chỉ được tính ${v} điểm vì nhóm đã chạm trần ${n.max}.</div>`:""}
+          ${mc?`<div class="mcbox">
+              <div class="nhan">Minh chứng đã nộp</div>
+              <div>${esc(mc)}</div>
+              <div class="hd"><button data-mc="${it.id}">Sửa</button><button data-go="${it.id}">Gỡ</button></div>
+            </div>`
+            :`<button class="mc" data-mc="${it.id}">Minh chứng hoạt động</button>`}
+        </article>`;
+      }).join("")}
+    </div>`).join("");
+  $("#noidung").innerHTML = html;
+}
+
+function vePanel(el){
+  const d = tongCong(), [ten,mau,nen,vien] = xepLoai(d);
+  const hang = DATA.map(s=>{
+    const t = tongMuc(s), pc = Math.min(100, Math.abs(t)/Math.abs(s.max)*100);
+    return `<tr><td class="t">${esc(s.ten.length>62?s.ten.slice(0,60)+"…":s.ten)}
+      <div class="mini ${s.tru?"tru":""}"><i style="width:${pc}%"></i></div></td>
+      <td class="n" style="color:${s.tru&&t<0?"var(--do)":"var(--muc)"}">${t}<span style="color:var(--mo);font-weight:400">/${s.max}</span></td></tr>`;
+  }).join("");
+  el.innerHTML = `
+    <h2>Bảng tổng kết</h2>
+    <p class="sub">Sinh viên tự chấm · học kì 2026-1 · chưa gửi cho cố vấn học tập</p>
+    <div class="kpi"><div class="big" style="color:${mau}">${d}</div><div class="of">/ 100 điểm</div>
+      <span class="xeploai" style="color:${mau};background:${nen};border-color:${vien}">${ten}</span></div>
+    <div class="bar"><i style="width:${d}%"></i></div>
+    <table>${hang}
+      <tr><td class="t" style="font-weight:600;padding-top:11px">Tổng cộng sau khi trừ vi phạm</td>
+          <td class="n" style="padding-top:11px">${tongTatCa()}</td></tr></table>
+    <div class="thang">Xuất sắc 90–100 · Tốt 80–89 · Khá 65–79 · Trung bình 50–64 · Yếu 35–49 · Kém dưới 35.</div>
+    <div class="actions">
+      <button class="ghost" data-hd="mau">Điền bản chấm mẫu</button>
+      <button class="ghost" data-hd="xoa">Xóa hết điểm</button>
+    </div>`;
+}
+
+function ve(){
+  veMuc();
+  const t = tongCong(), [ten,mau,nen,vien] = xepLoai(t);
+  $("#tong-sv").textContent = t;
+  $("#ft-diem").textContent = t;
+  $("#ft-diem").style.color = mau;
+  const badge = $("#ft-loai");
+  badge.textContent = ten; badge.style.color = mau; badge.style.background = nen; badge.style.borderColor = vien;
+  vePanel($("#panel"));
+  if($("#dlg-tong").open) vePanel($("#panel-mobile"));
+  luuTuDong();
+}
+
+/* ====================== TƯƠNG TÁC ====================== */
+function timItem(id){
+  for(const s of DATA) for(const n of s.nhom) for(const it of n.items)
+    if(it.id===id) return {muc:s, nhom:n, item:it};
+}
+function nhac(msg){
+  const t = $("#toast"); t.textContent = msg; t.classList.add("hien");
+  clearTimeout(nhac._h); nhac._h = setTimeout(()=>t.classList.remove("hien"), 2200);
+}
+
+$("#noidung").addEventListener("click", e=>{
+  const b = e.target.closest("button"); if(!b) return;
+  if(b.dataset.mc){
+    oDangSua = b.dataset.mc;
+    $("#mc-tieuchi").textContent = timItem(oDangSua).item.ten;
+    $("#mc-text").value = minhChung[oDangSua]||"";
+    $("#dlg-mc").showModal();
+  }
+  if(b.dataset.go){ delete minhChung[b.dataset.go]; ve(); nhac("Đã gỡ minh chứng"); }
+});
+$("#noidung").addEventListener("change", e=>{
+  const inp = e.target.closest("input[data-tick]"); if(!inp) return;
+  const {muc,nhom,item} = timItem(inp.dataset.tick);
+  datDiem(muc, nhom, item, inp.checked ? item.max : 0);
+});
+
+$("#dlg-mc").addEventListener("close", ()=>{
+  const dlg = $("#dlg-mc");
+  if(dlg.returnValue==="luu"){
+    const v = $("#mc-text").value.trim();
+    if(v){
+      minhChung[oDangSua]=v;
+      const {muc,nhom,item} = timItem(oDangSua);
+      if(!g(item.id)) datDiem(muc,nhom,item,item.max);   // có minh chứng là đạt trọn điểm tiêu chí
+      nhac("Đã đính kèm minh chứng");
+    } else delete minhChung[oDangSua];
+  }
+  if(dlg.returnValue==="xoa"){ delete minhChung[oDangSua]; nhac("Đã gỡ minh chứng"); }
+  ve();
+});
+
+document.addEventListener("click", e=>{
+  const b = e.target.closest("[data-hd]"); if(!b) return;
+  if(b.dataset.hd==="xoa"){
+    for(const k in diem) delete diem[k];
+    for(const k in minhChung) delete minhChung[k];
+    ve(); nhac("Đã xóa toàn bộ điểm và minh chứng");
+  }
+  if(b.dataset.hd==="mau"){ dienMau(); }
+});
+
+function dienMau(){
+  // một sinh viên năm 3 điển hình: chăm chỉ, có CLB, có TOEIC, không vi phạm
+  const chon = {0:{0:[0,1,2], 1:[0,1]},
+                1:{0:[0,1,3,4], 1:[2], 2:[0,2]},
+                2:{0:[0,1,2,4], 1:[0,1,3], 2:[0,1]},
+                3:{0:[0,2,3], 1:[]},
+                4:{0:[2], 1:[0], 2:[4,7]}};
+  for(const k in diem) delete diem[k];
+  Object.entries(chon).forEach(([si,ns])=>{
+    const s = DATA[+si];
+    Object.entries(ns).forEach(([ni,idx])=>{ const n = s.nhom[+ni];
+      idx.forEach(ii=>{ const it = n.items[ii]; if(it) datDiemThau(s,n,it,it.max); }); });
+  });
+  ve(); nhac("Đã điền một bản chấm mẫu để bạn sửa lại");
+}
+function datDiemThau(muc,nhom,item,v){ // như datDiem nhưng không vẽ lại từng bước
+  const dau = item.max<0?-1:1;
+  let m = Math.min(Math.abs(v), Math.abs(item.max));
+  m = Math.min(m, Math.abs(nhom.max)-Math.abs(tongNhom(nhom)-g(item.id)));
+  m = Math.min(m, Math.abs(muc.max)-Math.abs(tongMuc(muc)-g(item.id)));
+  diem[item.id] = dau*Math.max(0,m);
+}
+
+$("#prev").onclick = ()=>{ if(mucHienTai>0){ mucHienTai--; ve(); $("#noidung").scrollTop=0; } };
+$("#next").onclick = ()=>{ if(mucHienTai<DATA.length-1){ mucHienTai++; ve(); $("#noidung").scrollTop=0; } };
+$("#btn-back").onclick = ()=> nhac("Bản mô phỏng chỉ có kì 2026-1");
+$("#btn-tong").onclick = ()=>{ vePanel($("#panel-mobile")); $("#dlg-tong").showModal(); };
+document.addEventListener("keydown", e=>{
+  if(e.target.matches("input,textarea")) return;
+  if(e.key==="ArrowLeft") $("#prev").click();
+  if(e.key==="ArrowRight") $("#next").click();
+});
+
+setInterval(()=>{ const d=new Date();
+  $("#dongho").textContent = d.getHours()+":"+String(d.getMinutes()).padStart(2,"0"); }, 1000);
+
+ve(); taiTrangThai();
+</script>
